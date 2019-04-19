@@ -2,10 +2,12 @@ package com.ajs.glidetest;
 
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -16,8 +18,11 @@ import android.widget.RelativeLayout;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.Key;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.Request;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.CustomViewTarget;
+import com.bumptech.glide.request.target.SizeReadyCallback;
+import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.request.transition.Transition;
 import com.bumptech.glide.signature.ObjectKey;
 
@@ -36,6 +41,9 @@ public class MainActivity extends AppCompatActivity {
     RelativeLayout clMain;
     Button btnLoad;
     Key key;
+    Handler mHandler;
+    Runnable mRunnable;
+
     String[] mListImage = new String[]{
             "https://i.ibb.co/HqJtF17/test2.jpg",
             "https://i.ibb.co/dbCDP3D/test1.png"
@@ -46,21 +54,31 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         clMain = findViewById(R.id.clMain);
-        btnLoad = findViewById(R.id.btnLoad);
+        boolean isDownloadOK = PrefManager.getBoolean(this, "DOWNLOAD_OK", false);
+
+        /*btnLoad = findViewById(R.id.btnLoad);
         String sign = PrefManager.getString(this, TEST_KEY);
         if (sign.isEmpty()) {
             key = getNewKeySign();
         } else {
             key = new ObjectKey(sign);
+        }*/
+
+//        getImage(key, MainActivity.this, mListImage[0]);
+
+        mHandler = new Handler();
+        mRunnable = new Runnable() {
+            @Override
+            public void run() {
+                goToOne();
+            }
+        };
+        mHandler.postDelayed(mRunnable, 3000);
+        if(!isDownloadOK) {
+            runService(mListImage[0]);
+        } else {
+            clMain.setBackground(loadImage());
         }
-//        btnLoad.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                key = getNewKeySign();
-//                int rd = Math.abs(new Random().nextInt() % 2);
-//            }
-//        });
-        getImage(key, MainActivity.this, mListImage[0]);
     }
 
     private void getImage(Key key, Context context, String url) {
@@ -72,12 +90,9 @@ public class MainActivity extends AppCompatActivity {
         Glide.with(context)
                 .setDefaultRequestOptions(requestOptions)
                 .load(url)
-                .into(new CustomViewTarget<RelativeLayout, Drawable>(clMain) {
+                .into(new Target<Drawable>() {
                     @Override
-                    public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
-//                        clMain.setBackground(resource);
-                        Bitmap bitmap = ((BitmapDrawable)resource).getBitmap();
-                        saveImage(bitmap);
+                    public void onLoadStarted(@Nullable Drawable placeholder) {
 
                     }
 
@@ -87,13 +102,49 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    protected void onResourceCleared(@Nullable Drawable placeholder) {
+                    public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
 
                     }
 
                     @Override
-                    protected void onResourceLoading(@Nullable Drawable placeholder) {
-//                        clMain.setBackground(getResources().getDrawable(R.drawable.bg_splash, null));
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+
+                    }
+
+                    @Override
+                    public void getSize(@NonNull SizeReadyCallback cb) {
+
+                    }
+
+                    @Override
+                    public void removeCallback(@NonNull SizeReadyCallback cb) {
+
+                    }
+
+                    @Override
+                    public void setRequest(@Nullable Request request) {
+
+                    }
+
+                    @Nullable
+                    @Override
+                    public Request getRequest() {
+                        return null;
+                    }
+
+                    @Override
+                    public void onStart() {
+
+                    }
+
+                    @Override
+                    public void onStop() {
+
+                    }
+
+                    @Override
+                    public void onDestroy() {
+
                     }
                 });
     }
@@ -106,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
         return key;
     }
 
-    private void saveImage(Bitmap bitmap){
+    private void saveImage(Bitmap bitmap) {
         ContextWrapper wrapper = new ContextWrapper(getApplicationContext());
         File file = wrapper.getDir("Images", MODE_PRIVATE);
         file = new File(file, "Splash" + ".jpg");
@@ -114,11 +165,34 @@ public class MainActivity extends AppCompatActivity {
 
             OutputStream stream = null;
             stream = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG,100,stream);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
             stream.flush();
             stream.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void goToOne() {
+        Intent i = new Intent(MainActivity.this, OneActivity.class);
+        startActivity(i);
+    }
+
+    private void runService(String url) {
+        Intent i = new Intent(MainActivity.this,
+                DownloadService.class);
+        i.putExtra("image_url", url);
+        startService(i);
+    }
+
+    private Drawable loadImage() {
+        ContextWrapper cw = new ContextWrapper(MainActivity.this);
+
+        //path to /data/data/yourapp/app_data/dirName
+        File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
+        File mypath = new File(directory, "profile.jpg");
+        Drawable drawable = Drawable.createFromPath(mypath.toString());
+
+        return drawable;
     }
 }
