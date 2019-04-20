@@ -4,7 +4,6 @@ import android.app.IntentService;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
-import android.os.Environment;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
@@ -24,13 +23,14 @@ public class DownloadService extends IntentService {
     @Override
     protected void onHandleIntent(@Nullable Intent intent) {
         String imageUrl = intent.getStringExtra("image_url");
+        int version = intent.getIntExtra("version", -1);
 
         if (!TextUtils.isEmpty(imageUrl)) {
-            downloadImage(imageUrl);
+            downloadImage(imageUrl, version);
         }
     }
 
-    private void downloadImage(String url) {
+    private void downloadImage(String url, int version) {
 //        File downloadFile = new File("/sdcard/IntentService_Example.png");
         ContextWrapper cw = new ContextWrapper(getApplicationContext());
         // path to /data/data/yourapp/app_data/imageDir
@@ -53,7 +53,10 @@ public class DownloadService extends IntentService {
             }
             os.close();
             is.close();
-            Log.d("com.ajs.glidetest", "download complete");
+            if (version > -1) {
+                PrefManager.saveInt(DownloadService.this, "VERSION", version);
+            }
+                Log.d("com.ajs.glidetest", "download complete " + version);
             PrefManager.saveBoolean(DownloadService.this, "DOWNLOAD_OK", true);
         } catch (Exception e) {
             e.printStackTrace();
